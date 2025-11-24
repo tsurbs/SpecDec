@@ -1,0 +1,10 @@
+# Gitignore for latex files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz

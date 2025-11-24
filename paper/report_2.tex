@@ -1,0 +1,277 @@
+\documentclass[twocolumn,11pt]{article}
+
+% Packages
+\usepackage{natbib}      % For bibliography management
+\usepackage{graphicx}    % For including graphics
+\usepackage{amsmath}     % For math symbols and equations
+\usepackage{amssymb}     % mathbb
+\usepackage{geometry}    % To adjust page margins
+\usepackage{hyperref}    % For hyperlinks in the document
+\usepackage{times}
+\usepackage[switch]{lineno}      % For line numbers
+
+% Set the page geometry
+\geometry{a4paper, margin=0.75in}
+
+% Begin Document
+\begin{document}
+
+% Title
+\title{SpecDec}
+\author{Avi Arya \& Shreya Singh \& Theo Urban\\
+10-423/623 Generative AI Course Project}
+\date{\today}
+\maketitle
+
+\linenumbers
+
+\section{Introduction}
+%  Concise overview of the entire executive summary. The introduction
+% should in length be similar to that of a long abstract. It should highlight your motivation, proposed method, and expected results.
+As large language models have continued to grow, inference latency has become a bigger issue. Improvements in inference latency can significantly affect workflows, and having lower latency may result in faster systems and feedback loops. A recent proposal to address the issue of inference latency is Speculative Decoding, a method of using smaller models to generate a response, then using a larger language model to attempt to either accept or disregard the smaller language model's result. If the larger language model does not accept the smaller language model's result, then the larger language model generates its own result fully. However, the hope is that, oftentimes, the smaller language model and the larger language model will result, resulting in improved latency.
+
+
+In this project, we hope to apply finetuning to Speculative Decoding to create a faster model for code generation. Specifically, we will use The Stack, a dataset of code files, to finetune minGPT, then use this as the small model in our speculative decoding model, eventually comparing this model to speculative decoding without this additional finetuning. 
+
+
+\section{Dataset / Task}
+% Detailed description of the task, dataset, and metric(s) for evaluation.
+% This section should be nearly in its final form.
+For this project, we will use The Stack, a large dataset of source code developed by the BigCode project. The dataset is one of the most extensive collections of code, containing 6.4 terabytes spanning 358 programming languages.
+
+Our use of this dataset will be to finetune our draft model, minGPT 2. We intend to create a training split with code from higher resource languages (Python, C++, Javascript, etc) and perhaps some lower resource languages as well. The lower resource languages can be use to evaluate the finetuning process for its impact on cross lingual performance disparities.
+
+The test set will comprise data from The Stack not used during finetuning. The set will have several code completion prompts where we will use a function signature, comment block, or partial line of code as input. Using this will allow us to compare the base model and finetuned model fairly on their code generation ability.
+
+The primary task at hand is domain-specific accelerated code completion. In other words, given an input context $s$ (a string of source code), we want to generate a plausible and syntatically correct continuation of the code using a speculative decoding framework to potentially accelerate the rate of output. 
+
+We define our two primary models as follows: 
+\begin{enumerate}
+    \item \textbf{Verifier Model ($P_\theta$)} represents the probability distribution $p(x\mid s)$ over the next token $x$ given some context $s$. For this project, we will use the standard GPT 2 model as $P_\theta$.
+    \item \textbf{Draft Model ($Q_\phi$)} represents the probability distribution $q(x \mid s)$. For this project, we will use minGPT 2 which is smaller and faster than the verifier model.
+\end{enumerate}
+
+Our project will compare two distinct draft models:
+\begin{enumerate}
+    \item \textbf{Baseline Draft Model ($Q_\phi$)} which is the unmodified minGPT 2 model.
+    \item \textbf{Finetuned Draft Model ($Q'_\phi$)} which is the minGPT 2 model after it has been finetuned on the training split from The Stack.
+\end{enumerate}
+
+The task involves providing the system with a context string $s$ and sampling a fixed length sequence of tokens from the draft model. These tokens are then validated by the verifier in a single pass.
+
+To quantitatively evaluate our model's success, we will look at its acceptance rate, speedup over the baseline model, and crosslingual disparity. These metrics are detailed more in a later section.
+
+\section{Related Work}
+%  Related Work. A short literature survey of 8 or more relevant papers. This section
+% should be nearly in its final form.
+Reducing inference times in LLMs is a significant area of past and current research. Modern LLMs have high associated computation and memory bandwidth costs due to standard decoding, which in turn provide a bottleneck for many real world applications.  Our project aims to build on the core technique of speculative decoding, first presented in \citet{leviathan2023fastinferencetransformersspeculative}. The paper demonstrated that using a smaller draft model to generate tokens and then passing them to a larger verifier model could provide speedups in generations without sacrificing generation quality. Then \citet{chen2023acceleratinglargelanguagemodel} introduced a similar method called speculative sampling that further solidified the technique's potential at reducing overhead. Our baseline model will be a direct implementation of the algorithms presented in these two papers.
+
+The reason for our finetuned model, however, is that the benefits of speculative decoding are not uniformly distributed. This issue is raised and explored by \citet{sandler2025disparateimpactsspeculativedecoding}, who point out performance disparities in speculative decoding. They show that it accelerates generation primarily for high resource languages and predictable text sequences. To this extent, we aim to evaluate our model on crosslingual performance as well. We will adopt the disparity metric $U(T)$ that they introduced to measure our approach's success.
+
+Our central hypothesis is that specializing the draft model to a particular task can improve its performance, which is well supported in recent literature. An example is using knowledge distilliation, which is done by \citet{zhou2024distillspecimprovingspeculativedecoding} via DistillSpec. Here, the draft model is explicitly trained on the verifier's output distribution. However, our approach diverges slightly to finetune on a specialized corpus which can be seen as domain-specific distillation.
+
+Finally, another consideration that we have to make is alignment. As shown by \citet{goel2024directalignmentdraftmodel}, it is imperative that the verifier and draft model are aligned, especially when the larger model is finetuned in some way (i.e. for chat) because a generic draft model will perform quite poorly in such cases. The solution they use is to finetune the draft model using the verifier model as a "teacher". While our project is not specifically aligning the draft model with the verifier, it does aim to align the draft model to the domain we are testing on.
+
+\section{Approach}
+% Approach. Description of both (a) your baseline approach and (b) the main methods that you will implement. This section should be nearly in its final form.
+In this project, our overall goal is to determine the impact of finetuning on speculative decoding models. Our baseline model is a speculative decoding model that uses minGPT 2 as the smaller model and GPT 2 as our larger, verifier model. We first must implement speculative decoding using these two models, and run experiments to determine the speed at which this generates its output on a few sample prompts. Next, we will finetune minGPT 2 on The Stack, a large dataset from Hugging Face containing code files in 300 different languages. By using this dataset, we hope to better inform our smaller model on this particular task. We will then reimplement speculative decoding using this finetuned model alongside GPT2, and will evaluate the inference latency and results on our given prompts.
+
+
+\section{Experiments}
+% Experiments. Precise description of the experiments you will run, and any results if applicable. You are required to present results of a baseline model on your task of interest. You must include skeleton tables/plots—these can be empty at this point. You should also include prose with references to the skeleton tables/plots describing what they will contain.
+\subsection{Experimental Setup}
+We will conduct all of our experiences on an A100 obtained through Google Colab Pro. We use ???B Pythia by ElutherAI as our Verifier model and 70M Pythia as our Draft model, following from the initial experiments below.  All experiments are conducted with a fixed seed to ensure consistency across runs.
+
+For our main set of experiemnts, we fix $\gamma=???$ tokens to standardize across runs with a reasonable balance between draft and verification speed.
+
+\subsection{Baseline Performance}
+Our first experiment establishes the baseline performance of a few different models and on different tasks - natural language completions and a few coding tasks in different languages outlined in the appendix.  
+
+% Need to convert from fib to averaging strategy with completions from The Stack on different languages
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c|c|c|c}
+        Model & Completion & Acce. Rate & Speedup\\ 
+        \hline 
+        GPT2-Large, distilgpt2 & NL & ??? & ??? \\
+         & Code (Py) & ???\\
+         & Code (C) & ???\\
+         & Code (go) & ???\\
+         & Code (rust) & ???\\
+        \hline 
+        Qwen2.5 (7B, 0.5B) & NL & ??? & ??? \\
+         & Code (Py) & ???\\
+         & Code (C) & ???\\
+         & Code (go) & ???\\
+         & Code (rust) & ???\\
+        \hline
+        Pythia (12B, 70M) & NL & ??? & ??? \\
+         & Code (Py) & ???\\
+         & Code (C) & ???\\
+         & Code (go) & ???\\
+         & Code (rust) & ???\\
+    \end{tabular}
+    \caption{Caption}
+    \label{tab:placeholder}
+\end{table}
+\subsection{Expected Outcomes}
+We want to answer a few fundamental research questions:
+\begin{enumerate}
+    \item How does domain-specific finetuning of a draft model on code affect the Acceptance rate and speedup of a Speculative Decoding setup in and out of domain.
+    \item How does finetuning a draft model on a code impact performance on low-resource sets (in our case, languages), within the domain.
+    \item How does dynamically varying draft length ($\gamma$) impact speedup under a fixed compute environment and under different domains
+\end{enumerate}
+
+\section{Proposed Experiments}
+
+In this section, we outline the experiments designed to evaluate how domain-specific finetuning of the draft model influences speculative decoding effectiveness. Our proposed experiments address three research questions: (1) whether finetuning improves acceptance rate and speedup in- and out-of-domain, (2) how performance changes across high- and low-resource languages, and (3) how the draft length $\gamma$ affects performance under a fixed compute budget.
+
+\subsection{RQ1: Does Domain-Specific Finetuning Improve Speculative Decoding Performance?}
+
+\textbf{Goal.}  
+Quantify the effect of finetuning on acceptance rate, latency, and speedup across code and natural language tasks.
+
+\textbf{Experimental Setup.}  
+We compare two systems:
+\begin{enumerate}
+    \item \textbf{Baseline SpecDec}: GPT2 (verifier) + unfinetuned minGPT2 (draft)
+    \item \textbf{Finetuned SpecDec}: GPT2 (verifier) + minGPT2 finetuned on The Stack
+\end{enumerate}
+
+Both models will be evaluated on:
+\begin{itemize}
+    \item \textbf{In-domain}: Code completions across Python, C++, Go, Rust, and others
+    \item \textbf{Out-of-domain}: Natural language tasks (news, stories, instructions)
+\end{itemize}
+
+Each prompt set will generate 128-token continuations with fixed draft length $\gamma$.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c|c|c|c|c}
+        Model Pair & Domain & Accept Rate & Latency & Speedup \\
+        \hline
+        Baseline & Code (Py) & ??? & ??? & ??? \\
+        Finetuned & Code (Py) & ??? & ??? & ??? \\
+        Baseline & NL & ??? & ??? & ??? \\
+        Finetuned & NL & ??? & ??? & ??? \\
+    \end{tabular}
+    \caption{Effect of draft model finetuning on acceptance rate and decoding speed.}
+    \label{tab:rq1}
+\end{table}
+
+\textbf{Expected Outcome.}  
+Finetuning should increase acceptance rate and speedup on code tasks, while maintaining comparable performance on natural language prompts.
+
+\subsection{RQ2: Does Finetuning Improve Performance for Low-Resource Languages?}
+
+\textbf{Goal.}  
+Determine whether finetuning disproportionately helps high-resource languages or narrows cross-lingual disparities.
+
+\textbf{Experimental Setup.}  
+We construct a language-stratified test set from The Stack:
+\begin{itemize}
+    \item \textbf{High-resource}: Python, C++, Java
+    \item \textbf{Medium}: Lua, Haskell, Ruby
+    \item \textbf{Low-resource}: Zig, Elixir, OCaml
+\end{itemize}
+
+For each language bucket, we measure:
+\begin{itemize}
+    \item Acceptance rate
+    \item End-to-end speedup
+    \item Disparity metric $U(T)$ from \citet{sandler2025disparateimpactsspeculativedecoding}
+\end{itemize}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c|c|c|c}
+        Language Group & Baseline $U(T)$ & Finetuned $U(T)$ & $\Delta$ Disparity \\
+        \hline
+        High Resource & ??? & ??? & ??? \\
+        Medium & ??? & ??? & ??? \\
+        Low Resource & ??? & ??? & ??? \\
+    \end{tabular}
+    \caption{Change in cross-lingual performance disparity after finetuning.}
+    \label{tab:rq2}
+\end{table}
+
+\textbf{Expected Outcome.}  
+Finetuning should reduce performance disparity across languages by improving draft alignment with code structure.
+
+\subsection{RQ3: How Does Draft Length $\gamma$ Affect Speedup Under Fixed Compute?}
+
+\textbf{Goal.}  
+Characterize how varying $\gamma$ impacts acceptance rate, rejection bursts, and overall speedup.
+
+\textbf{Experimental Setup.}  
+Using the finetuned draft model, we vary:
+\[
+\gamma \in \{1, 2, 4, 8, 16, 32\}
+\]
+For each $\gamma$, we record:
+\begin{itemize}
+    \item Acceptance rate
+    \item Rejection burst statistics
+    \item Real-time decoding speed
+\end{itemize}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c|c|c|c|c}
+        $\gamma$ & Avg. Burst Len. & $P(\text{Burst} > 10)$ & Speedup & Accept Rate \\
+        \hline
+        1 & ??? & ??? & ??? & ??? \\
+        4 & ??? & ??? & ??? & ??? \\
+        16 & ??? & ??? & ??? & ??? \\
+    \end{tabular}
+    \caption{Effect of draft length on rejection patterns and speedup.}
+    \label{tab:rq3}
+\end{table}
+
+\textbf{Expected Outcome.}  
+We hypothesize a unimodal trend where moderate values of $\gamma$ maximize speedup without causing excessive rejection cascades.
+
+\subsection{Summary}
+
+These experiments collectively evaluate:
+\begin{itemize}
+    \item Finetuning effects on speculative decoding efficiency (RQ1)
+    \item Cross-lingual disparity and fairness implications (RQ2)
+    \item Sensitivity of speculative decoding to draft length (RQ3)
+\end{itemize}
+
+Together, they form a comprehensive framework for understanding speculative decoding in domain-specialized settings.
+
+
+\section{Compute}
+% Check piazza
+
+% Conclusion
+\section{Plan}
+% Section 6: Plan. Timeline of remaining milestones with dates and who is responsible for each milestone.
+We can break this project in to three sequential  steps: 
+\begin{enumerate}
+    \item Set up speculative decoding using minGPT and GPT2 as paired models
+    \item Create metrics
+    \item Finetune minGPT and GPT2 on The Stack
+    \item Evaluate metrics pre and post finetune
+\end{enumerate}
+
+We intend to complete through the metrics creation and initial testing by the executive summary deadline.  The work is highly sequential so it will involve a lot of pair programming and back-and-forth.  However, we will assign directly responsible members for items 1, 2, and 3, to Avi, Shreya, and Theo in that order.
+
+% Identify how you will break up the work between each of the team members. (We strongly encourage you to consider pair programming or the like for the most important aspects of the implementation.) Identify what you plan to have completed by the Midway Executive Summary deadline.
+
+% References
+\bibliographystyle{plainnat}  % Choose a bibliography style (e.g., plainnat, abbrvnat)
+\bibliography{references}     % Add your .bib file here
+
+\appendix
+
+% \section{Example Appendix}
+% \label{sec:appendix}
+
+% This is an appendix.
+
+\end{document}
