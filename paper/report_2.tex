@@ -125,14 +125,9 @@ We want to answer a few fundamental research questions:
 
 \section{Proposed Experiments}
 
-In this section, we outline the experiments designed to evaluate how domain-specific finetuning of the draft model influences speculative decoding effectiveness. Our proposed experiments address three research questions: (1) whether finetuning improves acceptance rate and speedup in- and out-of-domain, (2) how performance changes across high- and low-resource languages, and (3) how the draft length $\gamma$ affects performance under a fixed compute budget.
+In this section, we outline the experiments designed to evaluate how domain-specific finetuning of the draft model influences speculative decoding effectiveness.
 
 \subsection{RQ1: Does Domain-Specific Finetuning Improve Speculative Decoding Performance?}
-
-\textbf{Goal.}  
-Quantify the effect of finetuning on acceptance rate, latency, and speedup across code and natural language tasks.
-
-\textbf{Experimental Setup.}  
 We compare two systems:
 \begin{enumerate}
     \item \textbf{Baseline SpecDec}: GPT2 (verifier) + unfinetuned minGPT2 (draft)
@@ -150,12 +145,12 @@ Each prompt set will generate 128-token continuations with fixed draft length $\
 \begin{table}[h]
     \centering
     \begin{tabular}{c|c|c|c|c}
-        Model Pair & Domain & Accept Rate & Latency & Speedup \\
+        Model Pair & Domain & Accept Rate & Speedup \\
         \hline
-        Baseline & Code (Py) & ??? & ??? & ??? \\
-        Finetuned & Code (Py) & ??? & ??? & ??? \\
-        Baseline & NL & ??? & ??? & ??? \\
-        Finetuned & NL & ??? & ??? & ??? \\
+        Baseline & Code (Py) & ??? & ???\\
+        Finetuned & Code (Py) & ??? & ???\\
+        Baseline & NL & ??? & ???\\
+        Finetuned & NL & ??? & ???\\
     \end{tabular}
     \caption{Effect of draft model finetuning on acceptance rate and decoding speed.}
     \label{tab:rq1}
@@ -170,28 +165,19 @@ Finetuning should increase acceptance rate and speedup on code tasks, while main
 Determine whether finetuning disproportionately helps high-resource languages or narrows cross-lingual disparities.
 
 \textbf{Experimental Setup.}  
-We construct a language-stratified test set from The Stack:
-\begin{itemize}
-    \item \textbf{High-resource}: Python, C++, Java
-    \item \textbf{Medium}: Lua, Haskell, Ruby
-    \item \textbf{Low-resource}: Zig, Elixir, OCaml
+We construct a language-stratified test set from The Stack with three buckets:\textbf{High-resource}: Python, C++, Java, \textbf{Medium}: Lua, Haskell, Ruby, and \textbf{Low-resource}: Zig, Elixir, OCaml
 \end{itemize}
 
-For each language bucket, we measure:
-\begin{itemize}
-    \item Acceptance rate
-    \item End-to-end speedup
-    \item Disparity metric $U(T)$ from \citet{sandler2025disparateimpactsspeculativedecoding}
-\end{itemize}
+For each language bucket, we measure (1) acceptance rate, (2) end-to-end speedup, and (3) disparity metric $U(T)$ from \citet{sandler2025disparateimpactsspeculativedecoding} before and after finetuning.
 
 \begin{table}[h]
     \centering
     \begin{tabular}{c|c|c|c}
-        Language Group & Baseline $U(T)$ & Finetuned $U(T)$ & $\Delta$ Disparity \\
+        Group & Base $U(T)$ & Tuned $U(T)$ & $\Delta$ Disparity \\
         \hline
-        High Resource & ??? & ??? & ??? \\
+        High & ??? & ??? & ??? \\
         Medium & ??? & ??? & ??? \\
-        Low Resource & ??? & ??? & ??? \\
+        Low & ??? & ??? & ??? \\
     \end{tabular}
     \caption{Change in cross-lingual performance disparity after finetuning.}
     \label{tab:rq2}
@@ -206,16 +192,19 @@ Finetuning should reduce performance disparity across languages by improving dra
 Characterize how varying $\gamma$ impacts acceptance rate, rejection bursts, and overall speedup.
 
 \textbf{Experimental Setup.}  
-Using the finetuned draft model, we vary:
-\[
-\gamma \in \{1, 2, 4, 8, 16, 32\}
-\]
-For each $\gamma$, we record:
-\begin{itemize}
-    \item Acceptance rate
-    \item Rejection burst statistics
-    \item Real-time decoding speed
-\end{itemize}
+Using the finetuned draft model, we vary $\gamma \in \{1, 2, 4, 8, 16, 32\}$
+For each $\gamma$, we record (1) Acceptance rate, (2) rejection burst statistics, and (3) real-time decoding speedup.
+% Reduce inter-column spacing and use a smaller font for the upcoming table.
+\setlength{\tabcolsep}{3pt} % default is ~6pt
+\renewcommand{\arraystretch}{0.9}
+\small
+
+% Short, stacked column headings to collapse header width
+\newcommand{\colGamma}{\shortstack{$\gamma$}}
+\newcommand{\colAvgBurst}{\shortstack{Avg.\\Burst Len.}}
+\newcommand{\colPBurst}{\shortstack{$P(\mathrm{Burst}>10)$}}
+\newcommand{\colSpeedup}{\shortstack{Speedup}}
+\newcommand{\colAccept}{\shortstack{Accept\\Rate}}
 
 \begin{table}[h]
     \centering
@@ -229,21 +218,12 @@ For each $\gamma$, we record:
     \caption{Effect of draft length on rejection patterns and speedup.}
     \label{tab:rq3}
 \end{table}
+\normalsize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1}
 
 \textbf{Expected Outcome.}  
-We hypothesize a unimodal trend where moderate values of $\gamma$ maximize speedup without causing excessive rejection cascades.
-
-\subsection{Summary}
-
-These experiments collectively evaluate:
-\begin{itemize}
-    \item Finetuning effects on speculative decoding efficiency (RQ1)
-    \item Cross-lingual disparity and fairness implications (RQ2)
-    \item Sensitivity of speculative decoding to draft length (RQ3)
-\end{itemize}
-
-Together, they form a comprehensive framework for understanding speculative decoding in domain-specialized settings.
-
+We hypothesize a unimodal trend where moderate values of $\gamma$ maximize speedup by avoiding excessive rejections while still leveraging draft efficiency.
 
 \section{Compute}
 % Check piazza
