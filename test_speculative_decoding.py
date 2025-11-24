@@ -435,8 +435,8 @@ def run_full_benchmark():
     # Test parameters
     MAX_NEW_TOKENS = 100
     GAMMA = 5
-    NUM_NL_SAMPLES = 3
-    NUM_CODE_SAMPLES = 2
+    NUM_NL_SAMPLES = 100
+    NUM_CODE_SAMPLES = 100
     
     # Load datasets
     nl_prompts = load_pile_samples(NUM_NL_SAMPLES)
