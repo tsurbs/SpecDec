@@ -44,17 +44,18 @@ class SpeculativeDecodingTester:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         
         # Load models
+        self.draft_model = AutoModelForCausalLM.from_pretrained(
+            draft_checkpoint,
+            device_map="auto",
+            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+        )
         self.verifier_model = AutoModelForCausalLM.from_pretrained(
             verifier_checkpoint,
             device_map="auto",
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
         )
         
-        self.draft_model = AutoModelForCausalLM.from_pretrained(
-            draft_checkpoint,
-            device_map="auto",
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
-        )
+        
         
         self.verifier_model.eval()
         self.draft_model.eval()

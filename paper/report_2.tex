@@ -77,7 +77,7 @@ Finally, another consideration that we have to make is alignment. As shown by \c
 In this project, our overall goal is to determine the impact of finetuning on speculative decoding models. Our baseline model is a speculative decoding model that uses minGPT 2 as the smaller model and GPT 2 as our larger, verifier model. We first must implement speculative decoding using these two models, and run experiments to determine the speed at which this generates its output on a few sample prompts. Next, we will finetune minGPT 2 on The Stack, a large dataset from Hugging Face containing code files in 300 different languages. By using this dataset, we hope to better inform our smaller model on this particular task. We will then reimplement speculative decoding using this finetuned model alongside GPT2, and will evaluate the inference latency and results on our given prompts.
 
 
-\section{Experiments}
+\section{Baselines}
 % Experiments. Precise description of the experiments you will run, and any results if applicable. You are required to present results of a baseline model on your task of interest. You must include skeleton tables/plots—these can be empty at this point. You should also include prose with references to the skeleton tables/plots describing what they will contain.
 \subsection{Experimental Setup}
 We will conduct all of our experiences on an A100 obtained through Google Colab Pro. We use 12B Pythia by ElutherAI as our Verifier model and 70M Pythia as our Draft model, following from the initial experiments below.  All experiments are conducted with a fixed seed of 42 to ensure consistency across runs.
@@ -89,32 +89,28 @@ Our first experiment establishes the baseline performance of a few different mod
 
 % Need to convert from fib to averaging strategy with completions from The Stack on different languages
 
-\begin{table}[h]
-    \centering
-    \begin{tabular}{c|c|c|c}
-        Model & Completion & Acce. Rate & Speedup\\ 
-        \hline 
-        GPT2-Large, distilgpt2 & NL & ??? & ??? \\
-         & Code (Py) & ???\\
-         & Code (C) & ???\\
-         & Code (go) & ???\\
-         & Code (rust) & ???\\
-        \hline 
-        Qwen2.5 (7B, 0.5B) & NL & ??? & ??? \\
-         & Code (Py) & ???\\
-         & Code (C) & ???\\
-         & Code (go) & ???\\
-         & Code (rust) & ???\\
-        \hline
-        Pythia (12B, 70M) & NL & ??? & ??? \\
-         & Code (Py) & ???\\
-         & Code (C) & ???\\
-         & Code (go) & ???\\
-         & Code (rust) & ???\\
-    \end{tabular}
-    \caption{Caption}
-    \label{tab:placeholder}
-\end{table}
+\begin{tabular}{l|l|c|c}
+Model & Completion & Acce. Rate & Speedup \\
+\hline
+Qwen & NL & 38.3\% & 0.60x \\
+ & Code (c) & 67.9\% & 0.50x \\
+ & Code (go) & 67.0\% & 0.58x \\
+ & Code (python) & 69.4\% & 0.63x \\
+ & Code (rust) & 69.3\% & 0.58x \\
+\hline
+GPT-2  & NL & 36.5\% & 1.15x \\
+ & Code (c) & 63.6\% & 1.62x \\
+ & Code (go) & 55.4\% & 1.51x \\
+ & Code (python) & 65.0\% & 1.64x \\
+ & Code (rust) & 57.2\% & 1.50x \\
+\hline
+Pythia & NL & 34.7\% & 1.26x \\
+ & Code (c) & 54.9\% & 1.17x \\
+ & Code (go) & 54.1\% & 1.18x \\
+ & Code (python) & 55.0\% & 1.23x \\
+ & Code (rust) & 56.2\% & 1.26x \\
+\end{tabular}
+\caption{Baseline speculative decoding performance across different model pairs and tasks. Qwen: (Qwen2.5-7B+Qwen2.5-0.5B), GPT-2: (gpt2-large+distilgpt2), Pythia: (pythia-12b+pythia-70m).}
 
 \section{Proposed Experiments}
 
