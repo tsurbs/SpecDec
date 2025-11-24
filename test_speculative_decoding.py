@@ -303,8 +303,16 @@ def load_pile_samples(num_samples: int = 5) -> List[Dict]:
             if i >= num_samples:
                 break
             text = item['text']
-            # Take first ~200 chars as prompt
-            prompt_text = text[:200].strip()
+            
+            # Skip very short texts
+            if len(text) < 400:
+                continue
+            
+            # Extract from middle section (skip first 25%, take from there)
+            start_pos = len(text) // 4
+            # Take ~200 chars from middle
+            prompt_text = text[start_pos:start_pos + 200].strip()
+            
             if len(prompt_text) > 50:  # Ensure reasonable length
                 prompts.append({
                     'text': prompt_text,
@@ -349,41 +357,53 @@ def load_stack_samples(languages: List[str] = ['python', 'c', 'go', 'rust'],
     prompts = []
     
     for lang in languages:
-        # Load The Stack dataset for specific language
-        dataset = load_dataset(
-            "bigcode/the-stack-dedup",
-            data_dir=f"data/{lang}",
-            split="train",
-            streaming=True
-        )
-        
-        lang_prompts = 0
-        for item in dataset:
-            if lang_prompts >= num_samples:
-                break
+        try:
+            # Load The Stack dataset for specific language
+            dataset = load_dataset(
+                "bigcode/the-stack-dedup",
+                data_dir=f"data/{lang}",
+                split="train",
+                streaming=True
+            )
             
-            code = item['content']
-            # Take first ~300 chars as prompt (incomplete function/code)
-            lines = code.split('\n')
-            prompt_lines = []
-            char_count = 0
-            
-            for line in lines[:20]:  # Max 20 lines
-                if char_count + len(line) > 300:
+            lang_prompts = 0
+            for item in dataset:
+                if lang_prompts >= num_samples:
                     break
-                prompt_lines.append(line)
-                char_count += len(line) + 1
+                
+                code = item['content']
+                
+                # Skip very short files (likely just imports/boilerplate)
+                if len(code) < 600:
+                    continue
+                
+                lines = code.split('\n')
+                
+                # Skip files with too few lines
+                if len(lines) < 20:
+                    continue
+                
+                # Find a good starting point in the middle (skip first 30% of lines)
+                start_line = len(lines) // 3
+                
+                # Extract ~15 lines from middle section
+                middle_lines = lines[start_line:start_line + 15]
+                prompt_text = '\n'.join(middle_lines).strip()
+                
+                # Make sure we have substantive code (not just comments/whitespace)
+                non_empty_lines = [l for l in middle_lines if l.strip() and not l.strip().startswith('#') and not l.strip().startswith('//')]
+                
+                if len(prompt_text) > 100 and len(non_empty_lines) >= 5:
+                    prompts.append({
+                        'text': prompt_text,
+                        'type': f'Code ({lang})'
+                    })
+                    lang_prompts += 1
             
-            prompt_text = '\n'.join(prompt_lines).strip()
-            
-            if len(prompt_text) > 50:  # Ensure reasonable length
-                prompts.append({
-                    'text': prompt_text,
-                    'type': f'Code ({lang})'
-                })
-                lang_prompts += 1
+            print(f"  Loaded {lang_prompts} samples for {lang}")
         
-        print(f"  Loaded {lang_prompts} samples for {lang}")
+        except Exception as e:
+            print(f"  Error loading {lang}: {e}")
 
     print(f"Total code samples loaded: {len(prompts)}")
     return prompts
