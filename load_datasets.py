@@ -103,22 +103,11 @@ def load_stack_samples(languages: List[str] = ["python", "javascript", "java", "
                 if len(lines) < 20:
                     continue
                 
-                # Find a good starting point in the middle (skip first 30% of lines)
-                start_line = len(lines) // 3
-                
-                # Extract ~15 lines from middle section
-                middle_lines = lines[start_line:start_line + 15]
-                prompt_text = '\n'.join(middle_lines).strip()
-                
-                # Make sure we have substantive code (not just comments/whitespace)
-                non_empty_lines = [l for l in middle_lines if l.strip() and not l.strip().startswith('#') and not l.strip().startswith('//')]
-                
-                if len(prompt_text) > 100 and len(non_empty_lines) >= 5:
-                    prompts.append({
-                        'text': prompt_text,
-                        'type': f'Code ({lang})'
-                    })
-                    lang_prompts += 1
+                prompts.append({
+                    'text': code,
+                    'type': f'Code ({lang})'
+                })
+                lang_prompts += 1
             
             print(f"  Loaded {lang_prompts} samples for {lang}")
         
