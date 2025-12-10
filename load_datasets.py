@@ -64,7 +64,7 @@ def load_pile_samples(num_samples: int = 5) -> List[Dict]:
 def load_stack_samples(languages: List[str] = ["python", "javascript", "java", "c++"], 
                        num_samples: int = 3) -> List[Dict]:
     """
-    Load Code samples from The Stack dataset.
+    Load Code samples from The Stack dataset. (n_samples from each language)
     
     Args:
         languages: List of programming languages to sample
@@ -73,7 +73,7 @@ def load_stack_samples(languages: List[str] = ["python", "javascript", "java", "
     Returns:
         List of prompt dictionaries
     """
-    print(f"Loading code samples from The Stack for languages: {languages}...")
+    print(f"Loading code samples from The Stack for languages: {languages} with {num_samples} samples each")
     prompts = []
     
     for lang in languages if languages is not None else [None]:
@@ -93,13 +93,13 @@ def load_stack_samples(languages: List[str] = ["python", "javascript", "java", "
                 
                 code = item['content']
                 
-                # Skip very short files (likely just imports/boilerplate)
+                # Skip very short files
                 if len(code) < 600:
                     continue
                 
                 lines = code.split('\n')
                 
-                # Skip files with too few lines
+                # And files with too few lines
                 if len(lines) < 20:
                     continue
                 
@@ -109,104 +109,10 @@ def load_stack_samples(languages: List[str] = ["python", "javascript", "java", "
                 })
                 lang_prompts += 1
             
-            print(f"  Loaded {lang_prompts} samples for {lang}")
+            print(f"Loaded {lang_prompts} samples for {lang}")
         
         except Exception as e:
-            print(f"  Error loading {lang}: {e}")
+            print(f"Error loading {lang}: {e}")
 
     print(f"Total code samples loaded: {len(prompts)}")
     return prompts
-
-def load_stack_samples_representative(dataset_proportion: float) -> List[Dict]:
-    """
-    Load representative Code samples from The Stack dataset across multiple languages, using bigcode/the-stack-smol.
-    
-    Args:
-        num_samples: Total number of samples to load across languages
-    Returns:
-        List of prompt dictionaries
-    """
-    prompts = []
-    languages = [
-        "assembly",
-        "batchfile",
-        "c++",
-        "c-sharp",
-        "c",
-        "cmake",
-        "css",
-        "dockerfile",
-        "fortran",
-        "go",
-        "haskell",
-        "html",
-        "java",
-        "javascript",
-        "julia",
-        "lua",
-        "makefile",
-        "markdown",
-        "perl",
-        "php",
-        "powershell",
-        "python",
-        "ruby",
-        "rust",
-        "scala",
-        "shell",
-        "sql",
-        "tex",
-        "typescript",
-        "visual-basic"
-    ]
-    
-    print(f"Loading representative code samples from The Stack across multiple languages...")
-    for lang in languages:
-        try:
-            # Load The Stack dataset for specific language
-            dataset = load_dataset(
-                "bigcode/the-stack-smol",
-                data_dir=f"data/{lang}",
-                split="train",
-                streaming=True
-            )
-            
-            lang_prompts = 0
-            for item in dataset:
-                
-                code = item['content']
-                
-                # Skip very short files (likely just imports/boilerplate)
-                if len(code) < 600:
-                    continue
-                
-                lines = code.split('\n')
-                
-                # Skip files with too few lines
-                if len(lines) < 20:
-                    continue
-                
-                # Find a good starting point in the middle (skip first 30% of lines)
-                start_line = len(lines) // 3
-                
-                # Extract ~15 lines from middle section
-                middle_lines = lines[start_line:start_line + 15]
-                prompt_text = '\n'.join(middle_lines).strip()
-                
-                # Make sure we have substantive code (not just comments/whitespace)
-                non_empty_lines = [l for l in middle_lines if l.strip() and not l.strip().startswith('#') and not l.strip().startswith('//')]
-                
-                if len(prompt_text) > 100 and len(non_empty_lines) >= 5:
-                    prompts.append({
-                        'text': prompt_text,
-                        'type': f'Code ({lang})'
-                    })
-                    lang_prompts += 1
-            
-            print(f"  Loaded {lang_prompts} samples for {lang}")
-        
-        except Exception as e:
-            print(f"  Error loading {lang}: {e}")
-
-        print(f"Total code samples loaded: {len(prompts)}")
-        return prompts

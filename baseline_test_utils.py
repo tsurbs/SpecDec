@@ -35,9 +35,8 @@ class SpeculativeDecodingTester:
         self.draft_checkpoint = draft_checkpoint
         
         print(f"Using device: {self.device}")
-        print(f"Loading models...")
-        print(f"  Verifier: {verifier_checkpoint}")
-        print(f"  Draft: {draft_checkpoint}")
+        print(f"Verifier: {verifier_checkpoint}")
+        print(f"Draft: {draft_checkpoint}")
         
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(verifier_checkpoint)
@@ -55,8 +54,6 @@ class SpeculativeDecodingTester:
             device_map="auto",
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
         )
-        
-        
         
         self.verifier_model.eval()
         self.draft_model.eval()
@@ -197,7 +194,7 @@ class SpeculativeDecodingTester:
         consistency = matches / min_len if min_len > 0 else 0
         
         results = {
-            "prompt": prompt[:100],
+            "prompt": prompt[:100], # Truncated for efficiency
             "baseline_time": baseline_time,
             "speculative_time": spec_time,
             "acceptance_rate": acc_rate,
@@ -215,8 +212,7 @@ class SpeculativeDecodingTester:
         
         return results
     
-    def run_benchmark_suite(self, prompts: List[Dict], max_new_tokens: int = 100, 
-                          gamma: int = 5) -> Dict:
+    def run_benchmark_suite(self, prompts: List[Dict], max_new_tokens: int = 100, gamma: int = 5) -> Dict:
         """
         Run benchmark on a suite of prompts.
         
@@ -234,10 +230,9 @@ class SpeculativeDecodingTester:
             prompt = prompt_data['text']
             prompt_type = prompt_data.get('type', 'unknown')
             
-            print(f"\n{'='*80}")
-            print(f"Test {i+1}/{len(prompts)} - Type: {prompt_type}")
-            print(f"Prompt: {prompt[:100]}...")
-            print(f"{'='*80}")
+            print(f"Test {i+1}/{len(prompts)}")
+            print(f"Type: {prompt_type}")
+            print(f"Prompt: {prompt[:100]}")
             
             try:
                 result = self.run_single_test(prompt, max_new_tokens, gamma, verbose=True)
@@ -307,7 +302,7 @@ def run_full_benchmark():
         }
     ]
     
-    # Test parameters
+    # Test parameters (limited for efficiency)
     MAX_NEW_TOKENS = 100
     GAMMA = 5
     NUM_NL_SAMPLES = 100
@@ -320,11 +315,9 @@ def run_full_benchmark():
     all_results = {}
     
     for config in configs:
-        print(f"\n\n{'#'*80}")
-        print(f"# Testing {config['name']} Configuration")
-        print(f"# Verifier: {config['verifier']}")
-        print(f"# Draft: {config['draft']}")
-        print(f"{'#'*80}\n")
+        print(f"Testing {config['name']} Configuration")
+        print(f"Verifier: {config['verifier']}")
+        print(f"Draft: {config['draft']}")
         
         try:
             tester = SpeculativeDecodingTester(
@@ -345,14 +338,12 @@ def run_full_benchmark():
             all_results[config['name']] = results
             
             # Print summary
-            print(f"\n{'='*80}")
             print(f"SUMMARY FOR {config['name']}")
-            print(f"{'='*80}")
             for ptype, metrics in results['summary'].items():
-                print(f"\n{ptype}:")
-                print(f"  Acceptance Rate: {metrics['avg_acceptance_rate']:.2%} ± {metrics['std_acceptance_rate']:.2%}")
-                print(f"  Speedup: {metrics['avg_speedup']:.2f}x ± {metrics['std_speedup']:.2f}x")
-                print(f"  Samples: {metrics['num_samples']}")
+                print(f"{ptype}:")
+                print(f"Acceptance Rate: {metrics['avg_acceptance_rate']:.2%} +/- {metrics['std_acceptance_rate']:.2%}")
+                print(f"Speedup: {metrics['avg_speedup']:.2f}x +/- {metrics['std_speedup']:.2f}x")
+                print(f"Samples: {metrics['num_samples']}")
             
             # Clean up models to free memory
             del tester
@@ -379,78 +370,13 @@ def run_full_benchmark():
         
         serializable_results = convert_to_serializable(all_results)
         json.dump(serializable_results, f, indent=2)
+
     
-    print(f"\n\nResults saved to {output_file}")
-    
-    # Generate LaTeX table
-    generate_latex_table(all_results)
+    print(f"Benchmark results saved to {output_file}")
     
     return all_results
 
-
-def generate_latex_table(results: Dict):
-    """
-    Generate LaTeX table from benchmark results.
-    
-    Args:
-        results: Dictionary of benchmark results
-    """
-    print(f"\n\n{'='*80}")
-    print("LATEX TABLE")
-    print(f"{'='*80}\n")
-    
-    table_lines = []
-    table_lines.append("\\begin{tabular}{|l|l|c|c|}")
-    table_lines.append("\\hline")
-    table_lines.append("Model & Completion & Acce. Rate & Speedup \\\\")
-    table_lines.append("\\hline")
-    
-    for model_name, model_results in results.items():
-        summary = model_results['summary']
-        verifier = model_results['verifier_model'].split('/')[-1]
-        draft = model_results['draft_model'].split('/')[-1]
-        
-        # Sort types: NL first, then Code types
-        sorted_types = sorted(summary.keys(), key=lambda x: (0 if x == 'NL' else 1, x))
-        
-        for i, ptype in enumerate(sorted_types):
-            metrics = summary[ptype]
-            
-            # Format model name only for first row
-            if i == 0:
-                model_col = f"{model_name} ({verifier}+{draft})"
-            else:
-                model_col = ""
-            
-            acc_rate = f"{metrics['avg_acceptance_rate']:.1%}"
-            speedup = f"{metrics['avg_speedup']:.2f}x"
-            
-            table_lines.append(f"{model_col} & {ptype} & {acc_rate} & {speedup} \\\\")
-        
-        table_lines.append("\\hline")
-    
-    table_lines.append("\\end{tabular}")
-    
-    latex_table = "\n".join(table_lines)
-    print(latex_table)
-    
-    # Save to file
-    with open("latex_table.tex", 'w') as f:
-        f.write(latex_table)
-    
-    print(f"\nLaTeX table saved to latex_table.tex")
-
-
 if __name__ == "__main__":
-    print("Starting Speculative Decoding Benchmark Suite")
-    print(f"PyTorch version: {torch.__version__}")
-    print(f"CUDA available: {torch.cuda.is_available()}")
-    if torch.cuda.is_available():
-        print(f"CUDA device: {torch.cuda.get_device_name(0)}")
-    print("\n")
-    
+    print("Starting Benchmarks")
     results = run_full_benchmark()
-    
-    print("\n" + "="*80)
     print("BENCHMARK COMPLETE!")
-    print("="*80)
