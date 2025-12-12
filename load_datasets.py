@@ -43,8 +43,8 @@ def load_pile_samples(num_samples: int = 5) -> List[Dict]:
         return prompts
     
     except Exception as e:
-        print(f"Error loading The Pile: {e}")
-        print("Using fallback NL prompts...")
+        print(f"Error loading Pile: {e} :(")
+        print("Using fallback generated NL prompts")
         return [
             {
                 'text': "The history of artificial intelligence began in antiquity, with myths, stories and rumors of artificial beings endowed with intelligence or consciousness by master craftsmen. The seeds of modern AI were planted by classical philosophers who attempted to describe",

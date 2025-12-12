@@ -12,22 +12,9 @@ import warnings
 
 
 class SpeculativeDecodingTester:
-    """
-    A class to test speculative decoding across multiple model configurations
-    and dataset types.
-    """
-
     def __init__(
         self, verifier_checkpoint: str, draft_checkpoint: str, device: str = None
     ):
-        """
-        Initialize the tester with verifier and draft models.
-
-        Args:
-            verifier_checkpoint: HuggingFace model checkpoint for verifier
-            draft_checkpoint: HuggingFace model checkpoint for draft model
-            device: Device to use (cuda/cpu). Auto-detected if None.
-        """
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.verifier_checkpoint = verifier_checkpoint
         self.draft_checkpoint = draft_checkpoint
@@ -62,14 +49,7 @@ class SpeculativeDecodingTester:
         self, input_ids: torch.Tensor, max_new_tokens: int
     ) -> Tuple[torch.Tensor, float]:
         """
-        Generates text using standard autoregressive decoding.
-
-        Args:
-            input_ids: Input token IDs
-            max_new_tokens: Maximum number of tokens to generate
-
-        Returns:
-            Tuple of (output_ids, latency)
+        Generates text autoregressively lol
         """
         start_time = time.time()
 
@@ -89,15 +69,7 @@ class SpeculativeDecodingTester:
         self, input_ids: torch.Tensor, max_new_tokens: int, gamma: int = 5
     ) -> Tuple[torch.Tensor, float, float]:
         """
-        Implementation of Speculative Decoding.
-
-        Args:
-            input_ids: Input token IDs
-            max_new_tokens: Maximum number of tokens to generate
-            gamma: Number of tokens the draft model guesses at once
-
-        Returns:
-            Tuple of (output_ids, latency, acceptance_rate)
+        Implementation of Speculative Decoding
         """
         start_time = time.time()
 
